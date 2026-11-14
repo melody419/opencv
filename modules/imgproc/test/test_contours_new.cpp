@@ -442,6 +442,56 @@ TEST_P(Imgproc_FindContours_Modes2, approx)
 // TODO: offset test
 
 // no RETR_FLOODFILL - no CV_32S input images
+// Any non-zero pixel is foreground: the result must not depend on the actual non-zero values,
+// on the image width (vectorized part / tail) or on the data located outside of the ROI
+TEST_P(Imgproc_FindContours_Modes2, nonbinary_roi_input)
+{
+    const int mode = get<0>(GetParam());
+    const int method = get<1>(GetParam());
+
+    RNG& rng = TS::ptr()->get_rng();
+    const Size sizes[] = {Size(1, 1), Size(3, 5), Size(15, 9), Size(16, 16), Size(17, 4),
+                          Size(31, 33), Size(64, 20), Size(131, 77), Size(257, 130)};
+    for (const Size& sz : sizes)
+    {
+        SCOPED_TRACE(cv::format("size=%dx%d", sz.width, sz.height));
+
+        // reference: continuous 0/1 image
+        Mat noise(sz, CV_8UC1), ref;
+        cvtest::randUni(rng, noise, 0, 256);
+        cv::threshold(noise, ref, 150, 1, THRESH_BINARY);
+
+        // the same mask with arbitrary non-zero values, stored as ROI of a bigger non-zero image
+        Mat big(sz.height + 6, sz.width + 10, CV_8UC1, Scalar::all(255));
+        Mat img = big(Rect(Point(5, 3), sz));
+        for (int y = 0; y < sz.height; y++)
+            for (int x = 0; x < sz.width; x++)
+            {
+                const uchar values[] = {1, 2, 127, 128, 254, 255};
+                img.at<uchar>(y, x) = ref.at<uchar>(y, x) ? values[rng.uniform(0, 6)] : (uchar)0;
+            }
+        ASSERT_FALSE(img.isContinuous() && sz.height > 1);
+        const Mat img_copy = img.clone();
+
+        vector<vector<Point>> ref_contours, contours;
+        vector<Vec4i> ref_hierarchy, hierarchy;
+
+        // with hierarchy
+        findContours(ref, ref_contours, ref_hierarchy, mode, method);
+        findContours(img, contours, hierarchy, mode, method);
+        EXPECT_EQ(ref_contours, contours);
+        EXPECT_EQ(ref_hierarchy, hierarchy);
+
+        // without hierarchy
+        findContours(ref, ref_contours, mode, method);
+        findContours(img, contours, mode, method);
+        EXPECT_EQ(ref_contours, contours);
+
+        // input is not modified
+        EXPECT_EQ(0, cvtest::norm(img_copy, img, NORM_INF));
+    }
+}
+
 INSTANTIATE_TEST_CASE_P(
     ,
     Imgproc_FindContours_Modes2,

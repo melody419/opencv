@@ -303,6 +303,10 @@ void contourTreeToResults(CTree& tree,
 void approximateChainTC89(const ContourCodesStorage& chain, const Point& origin, const int method,
                           ContourPointsStorage& output);
 
+// Copies 8-bit single-channel image to dst adding 1-pixel zero border;
+// non-zero pixels are replaced with fg (single pass replacement for copyMakeBorder + threshold)
+void copyBinarizedWithBorder(const Mat& src, Mat& dst, uchar fg);
+
 void findTRUContours(InputArray _src, OutputArrayOfArrays _contours, int minSize=0, bool binarize=false, int method=CHAIN_APPROX_NONE);
 
 }  // namespace cv

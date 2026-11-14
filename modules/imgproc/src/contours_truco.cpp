@@ -656,9 +656,10 @@ void findTRUContours(InputArray _src, OutputArrayOfArrays _contours, int minSize
 
     // Buffer handling
     cv::Mat padded;
-    cv::copyMakeBorder(src, padded, 1, 1, 1, 1, cv::BORDER_CONSTANT, 0);
     if (binarize)
-        cv::threshold(padded, padded, 0, 255, cv::THRESH_BINARY);
+        copyBinarizedWithBorder(src, padded, 255);
+    else
+        cv::copyMakeBorder(src, padded, 1, 1, 1, 1, cv::BORDER_CONSTANT | cv::BORDER_ISOLATED, 0);
 
 
     // Fast path: caller passed std::vector<std::vector<cv::Point>> directly.

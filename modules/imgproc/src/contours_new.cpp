@@ -702,10 +702,14 @@ void cv::findContours(InputArray _image,
     Mat image;
     if (_image.empty())
         image = Mat::zeros(2, 2, _image.type());
+    else if (_image.type() == CV_8UC1)
+        copyBinarizedWithBorder(_image.getMat(), image, 1);
     else
+    {
         copyMakeBorder(_image, image, 1, 1, 1, 1, BORDER_CONSTANT | BORDER_ISOLATED, Scalar(0));
-    if (image.type() != CV_32SC1)
-        threshold(image, image, 0, 1, THRESH_BINARY);
+        if (image.type() != CV_32SC1)
+            threshold(image, image, 0, 1, THRESH_BINARY);
+    }
 
     // find contours
     ContourPointsStorage::storage_t pointsStorage;

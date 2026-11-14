@@ -74,3 +74,35 @@ void cv::contourTreeToResults(CTree& tree,
         }
     }
 }
+
+void cv::copyBinarizedWithBorder(const Mat& src, Mat& dst, uchar fg)
+{
+    CV_Assert(src.type() == CV_8UC1 && !src.empty());
+    const int width = src.cols, height = src.rows;
+    dst.create(height + 2, width + 2, CV_8UC1);
+    CV_Assert(dst.isContinuous());
+
+    memset(dst.ptr(0), 0, (size_t)width + 2);
+    memset(dst.ptr(height + 1), 0, (size_t)width + 2);
+
+#if (CV_SIMD || CV_SIMD_SCALABLE)
+    const int vlanes = VTraits<v_uint8>::vlanes();
+    const v_uint8 v_zero = vx_setzero_u8();
+    const v_uint8 v_fg = vx_setall_u8(fg);
+#endif
+    for (int y = 0; y < height; y++)
+    {
+        const uchar* sptr = src.ptr(y);
+        uchar* dptr = dst.ptr(y + 1);
+        dptr[0] = 0;
+        dptr[width + 1] = 0;
+        dptr++;
+        int x = 0;
+#if (CV_SIMD || CV_SIMD_SCALABLE)
+        for (; x <= width - vlanes; x += vlanes)
+            v_store(dptr + x, v_and(v_ne(vx_load(sptr + x), v_zero), v_fg));
+#endif
+        for (; x < width; x++)
+            dptr[x] = sptr[x] ? fg : (uchar)0;
+    }
+}
